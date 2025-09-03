@@ -1,205 +1,227 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>كويز Google Sheets</title>
   <style>
-    :root { --primary:#2563eb; --bg:#f7f7fb; --card:#fff; --text:#111; --muted:#666; }
-    body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
-    h2, h3 { margin-top: 0; }
-    .wrap { max-width: 820px; margin: 0 auto; }
-    .card { background: var(--card); border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-    .question { margin-bottom: 14px; padding: 14px; border: 1px dashed #e5e7eb; border-radius: 10px; }
-    .muted { color: var(--muted); }
-    .btn { display:inline-block; padding:10px 16px; border:0; border-radius:10px; background: var(--primary); color:#fff; cursor:pointer; font-weight:600; }
-    .btn.secondary { background:#111; }
-    .btn:disabled { opacity:.6; cursor:not-allowed; }
-    input[type="text"] { width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:10px; }
-    .row { display:grid; gap:10px; grid-template-columns: 1fr; }
-    .space { height: 8px; }
-    #result { margin-top: 12px; font-weight: 700; }
-    .error { color:#b91c1c; font-weight:600; }
-    .loading { padding: 10px; }
-    label { display:inline-flex; align-items:center; gap:6px; margin: 6px 0; cursor:pointer; }
+    body { font-family: Arial, sans-serif; padding:20px; direction:rtl; }
+    .card{ border:1px solid #ddd; padding:12px; border-radius:8px; background:#fff; max-width:900px; }
+    .question{ margin-bottom:12px; padding:10px; border-radius:6px; border:1px solid #eee; }
+    .row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    input[type=text]{ padding:8px; width:100%; box-sizing:border-box; }
+    button{ padding:8px 12px; border-radius:6px; cursor:pointer; }
+    .muted{ color:#666; font-size:0.9rem; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h2>الاختبار</h2>
+  <h2>الاختبار</h2>
+  <div class="card">
+    <div id="status" class="muted">جارٍ تحميل الأسئلة ...</div>
+    <form id="quizForm" hidden></form>
+    <button id="submitBtn" type="button" onclick="checkAnswers()" hidden>إرسال</button>
+    <div id="result" style="margin-top:12px;font-weight:700"></div>
+  </div>
 
-    <div class="card" id="quizCard">
-      <div id="status" class="loading muted">جارٍ تحميل الأسئلة…</div>
-      <form id="quizForm" hidden></form>
-      <button id="submitBtn" class="btn" type="button" onclick="checkAnswers()" hidden>إرسال</button>
-      <div id="result" aria-live="polite"></div>
-    </div>
+  <hr style="margin:20px 0">
 
-    <div class="space"></div>
-    <div class="space"></div>
+  <h3>إضافة سؤال جديد</h3>
+  <div class="card">
+    <form id="addForm" onsubmit="addQuestion(event)">
+      <div style="margin-bottom:8px">
+        <label class="muted">نص السؤال</label>
+        <input type="text" id="qText" required placeholder="اكتب السؤال هنا">
+      </div>
 
-    <h3>إضافة سؤال جديد</h3>
-    <div class="card">
-      <form id="addForm" onsubmit="addQuestion(event)">
-        <div class="row">
-          <div>
-            <label for="qText" class="muted">نص السؤال</label>
-            <input type="text" id="qText" placeholder="مثال: ما هي دالة جمع القيم في Google Sheets؟" required />
-          </div>
-          <div>
-            <label for="qOptions" class="muted">اختيارات (افصلها بفاصلة)</label>
-            <input type="text" id="qOptions" placeholder="SUM, AVERAGE, COUNT, MIN" required />
-          </div>
-          <div>
-            <label for="qAnswer" class="muted">الإجابة الصحيحة (يجب أن تطابق أحد الاختيارات)</label>
-            <input type="text" id="qAnswer" placeholder="SUM" required />
-          </div>
-        </div>
-        <div class="space"></div>
-        <button class="btn secondary" type="submit" id="addBtn">إضافة</button>
+      <div id="optionsWrapper">
+        <label class="muted">الاختيارات</label>
+        <!-- option inputs will be inserted here -->
+      </div>
+
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button type="button" onclick="addOption()">+ إضافة اختيار</button>
+        <button type="button" onclick="removeOption()">ـ إزالة اختيار</button>
+      </div>
+
+      <div style="margin-top:10px">
+        <label class="muted">الإجابة الصحيحة</label>
+        <select id="qAnswer" required>
+          <option value="">اختر الإجابة الصحيحة</option>
+        </select>
+      </div>
+
+      <div style="margin-top:12px">
+        <button type="submit">إضافة السؤال</button>
         <span id="addStatus" class="muted"></span>
-      </form>
-    </div>
+      </div>
+    </form>
   </div>
 
   <script>
-    // ▼▼ ضع رابط النشر من Web App هنا ▼▼
-    const API_URL = "https://script.google.com/macros/s/AKfycbwRR6ZTg7VdupmgPOxHIIy5Drqqv8pHQIUId9VLw2VUmWY8XZiaWKZTzH2wdXCLKEP_/exec";
+    // <-- PASTE your Web App URL here:
+    const API_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
 
+    // Helpers
+    const $ = sel => document.querySelector(sel);
+    const create = (tag, attrs={}) => {
+      const el = document.createElement(tag);
+      for (const k in attrs) {
+        if (k === 'text') el.textContent = attrs[k];
+        else el.setAttribute(k, attrs[k]);
+      }
+      return el;
+    };
+
+    // manage dynamic option inputs
+    const optionsWrapper = document.getElementById('optionsWrapper');
+    const answerSelect = document.getElementById('qAnswer');
+
+    function addOption(value = '') {
+      const idx = optionsWrapper.querySelectorAll('.option-row').length;
+      const row = create('div');
+      row.className = 'row option-row';
+      row.innerHTML = `
+        <input class="option-input" type="text" placeholder="نص الاختيار" value="${value.replace(/"/g,'&quot;')}" required/>
+      `;
+      optionsWrapper.appendChild(row);
+      updateAnswerOptions();
+      return row;
+    }
+
+    function removeOption() {
+      const rows = optionsWrapper.querySelectorAll('.option-row');
+      if (rows.length <= 1) return;
+      rows[rows.length - 1].remove();
+      updateAnswerOptions();
+    }
+
+    function updateAnswerOptions() {
+      // collect option texts
+      const opts = Array.from(optionsWrapper.querySelectorAll('.option-input')).map(i => i.value.trim()).filter(Boolean);
+      // rebuild answer select
+      answerSelect.innerHTML = '<option value="">اختر الإجابة الصحيحة</option>';
+      opts.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o;
+        opt.textContent = o;
+        answerSelect.appendChild(opt);
+      });
+    }
+
+    // start with 4 option inputs
+    addOption(''); addOption(''); addOption(''); addOption('');
+
+    // update answer select whenever option inputs change
+    optionsWrapper.addEventListener('input', (e) => {
+      if (e.target.classList.contains('option-input')) updateAnswerOptions();
+    });
+
+    // ---- Fetch & Render Questions ----
     let questions = [];
 
-    // ---- Helpers ----
-    const $ = (sel) => document.querySelector(sel);
-    const show = (el) => el.removeAttribute('hidden');
-    const hide = (el) => el.setAttribute('hidden', '');
-
-    function normalizeOptions(opts) {
-      // يدعم أن تكون الخيارات مصفوفة أو نصًا مفصولًا بفواصل (من الـ API)
-      if (Array.isArray(opts)) return opts.map(o => String(o).trim()).filter(Boolean);
-      return String(opts || "").split(",").map(o => o.trim()).filter(Boolean);
-    }
-
-    // ---- Load Questions ----
-    async function loadQuestions() {
-      const status = $("#status");
-      const quizForm = $("#quizForm");
-      const submitBtn = $("#submitBtn");
-      status.textContent = "جارٍ تحميل الأسئلة…";
-      hide(quizForm);
-      hide(submitBtn);
-
+    async function loadQuestions(){
+      $('#status').textContent = 'جارٍ تحميل الأسئلة ...';
       try {
-        const res = await fetch(API_URL, { method: "GET" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // قد يرجع الـ Web App نصًا — نحاول تحويله
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error("الاستجابة ليست JSON صالحًا. تحقق من كود Apps Script.");
-        }
-
-        if (!Array.isArray(data)) throw new Error("شكل البيانات غير صحيح: يجب أن يكون مصفوفة أسئلة.");
-        questions = data.map(q => ({
-          question: String(q.question ?? q.Question ?? "").trim(),
-          options: normalizeOptions(q.options ?? q.Options ?? ""),
-          answer: String(q.answer ?? q.Answer ?? "").trim()
-        })).filter(q => q.question && q.options.length && q.answer);
-
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (!Array.isArray(data)) throw new Error('البيانات ليست مصفوفة');
+        questions = data;
         renderQuiz();
-        status.textContent = "";
-        show(quizForm);
-        show(submitBtn);
-
-        if (!questions.length) {
-          status.innerHTML = "<span class='muted'>لا توجد أسئلة حاليًا.</span>";
-        }
+        $('#status').textContent = '';
       } catch (err) {
         console.error(err);
-        status.innerHTML =
-          `<span class="error">حدث خطأ أثناء تحميل الأسئلة.</span>
-           <br><span class="muted">${err.message}</span>
-           <br><button class="btn" type="button" onclick="loadQuestions()">إعادة المحاولة</button>`;
+        $('#status').innerHTML = '<span style="color:red">فشل في تحميل الأسئلة.</span> ' + err.message;
       }
     }
 
-    // ---- Render ----
-    function renderQuiz() {
-      const quizForm = $("#quizForm");
-      quizForm.innerHTML = "";
-      questions.forEach((q, i) => {
-        const div = document.createElement("div");
-        div.className = "question";
-        div.innerHTML = `
-          <p><strong>${i + 1}.</strong> ${q.question}</p>
-          ${q.options.map(opt => `
-            <label>
-              <input type="radio" name="q${i}" value="${opt}">
-              <span>${opt}</span>
-            </label>
-          `).join("")}
-        `;
-        quizForm.appendChild(div);
-      });
-    }
-
-    // ---- Check ----
-    function checkAnswers() {
-      let score = 0;
-      questions.forEach((q, i) => {
-        const selected = document.querySelector(\`input[name="q\${i}"]:checked\`);
-        if (selected && selected.value.trim() === q.answer.trim()) score++;
-      });
-      $("#result").textContent = \`درجتك: \${score} من \${questions.length}\`;
-    }
-
-    // ---- Add ----
-    async function addQuestion(event) {
-      event.preventDefault();
-      const addBtn = $("#addBtn");
-      const addStatus = $("#addStatus");
-
-      const qText = $("#qText").value.trim();
-      const qOptions = $("#qOptions").value.split(",").map(s => s.trim()).filter(Boolean);
-      const qAnswer = $("#qAnswer").value.trim();
-
-      if (!qOptions.includes(qAnswer)) {
-        alert("الإجابة الصحيحة يجب أن تكون من ضمن الاختيارات!");
+    function renderQuiz(){
+      const form = $('#quizForm');
+      form.innerHTML = '';
+      if (!questions.length) {
+        form.innerHTML = '<p class="muted">لا توجد أسئلة حالياً.</p>';
+        $('#submitBtn').hidden = true;
+        $('#quizForm').hidden = false;
         return;
       }
+      questions.forEach((q, i) => {
+        const div = document.createElement('div');
+        div.className = 'question';
+        div.innerHTML = `<p><strong>${i+1}.</strong> ${escapeHtml(q.question)}</p>` +
+          (Array.isArray(q.options) ? q.options.map(opt => `
+              <label style="display:block; margin-bottom:6px;">
+                <input type="radio" name="q${i}" value="${escapeAttr(opt)}"> ${escapeHtml(opt)}
+              </label>
+          `).join('') : '');
+        form.appendChild(div);
+      });
+      $('#submitBtn').hidden = false;
+      $('#quizForm').hidden = false;
+    }
 
+    function checkAnswers(){
+      let score = 0;
+      questions.forEach((q, i) => {
+        const sel = document.querySelector(`input[name="q${i}"]:checked`);
+        if (sel && sel.value.trim() === (q.answer || '').trim()) score++;
+      });
+      $('#result').textContent = `درجتك: ${score} من ${questions.length}`;
+    }
+
+    // ---- Add Question ----
+    async function addQuestion(e){
+      e.preventDefault();
+      const addStatus = $('#addStatus');
+      const qText = $('#qText').value.trim();
+      const opts = Array.from(document.querySelectorAll('.option-input')).map(i => i.value.trim()).filter(Boolean);
+      const qAnswer = $('#qAnswer').value.trim();
+
+      if (!qText) { alert('أدخل نص السؤال'); return; }
+      if (opts.length < 2) { alert('أدخل على الأقل خيارين'); return; }
+      if (!opts.includes(qAnswer)) { alert('يجب أن تكون الإجابة الصحيحة إحدى الخيارات'); return; }
+
+      addStatus.textContent = 'جاري الإرسال...';
       try {
-        addBtn.disabled = true; addStatus.textContent = "جاري الإرسال…";
-
-        // ملاحظة هامة: نستخدم URLSearchParams لتجنّب طلب preflight (CORS) في Apps Script
+        // use URLSearchParams to avoid preflight
         const payload = new URLSearchParams();
-        payload.append("question", qText);
-        payload.append("options", JSON.stringify(qOptions));
-        payload.append("answer", qAnswer);
+        payload.append('question', qText);
+        payload.append('options', JSON.stringify(opts));
+        payload.append('answer', qAnswer);
 
         const res = await fetch(API_URL, {
-          method: "POST",
-          body: payload        // بدون تعيين Content-Type (سيتحول إلى application/x-www-form-urlencoded)
+          method: 'POST',
+          body: payload
         });
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // قد يعيد النص "OK" فقط
-        const txt = await res.text();
-        addStatus.textContent = (txt || "تمت إضافة السؤال بنجاح!");
-        $("#addForm").reset();
-        // إعادة التحميل بعد الإضافة
+        const text = await res.text();
+        // try parse if JSON
+        try {
+          const j = JSON.parse(text);
+          if (j.ok === false) throw new Error(j.error || 'server error');
+        } catch (err) {
+          // if response is not JSON it's ok (Apps Script sometimes returns plain text)
+        }
+
+        addStatus.textContent = 'تمت إضافة السؤال!';
+        document.getElementById('addForm').reset();
+        // reset options to 4 empty ones
+        optionsWrapper.innerHTML = '';
+        addOption(''); addOption(''); addOption(''); addOption('');
+        updateAnswerOptions();
+        // reload questions
         loadQuestions();
       } catch (err) {
         console.error(err);
-        addStatus.textContent = "فشل في إضافة السؤال.";
-        alert(err.message);
-      } finally {
-        addBtn.disabled = false;
+        addStatus.textContent = 'فشل في الإرسال.';
+        alert('فشل في إرسال السؤال: ' + err.message);
       }
     }
 
-    // kick off
+    // small helper to escape html
+    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function escapeAttr(s){ return String(s || '').replace(/"/g, '&quot;'); }
+
+    // Start
     loadQuestions();
   </script>
 </body>
