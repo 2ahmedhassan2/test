@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>كويز Google Sheets</title>
+  <style>
+    body { font-family: Arial; direction: rtl; text-align: right; margin: 20px; }
+    .question { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+  <h2>الاختبار</h2>
+  <form id="quizForm"></form>
+  <button type="button" onclick="checkAnswers()">إرسال</button>
+  <div id="result"></div>
+
+  <hr>
+  <h3>إضافة سؤال جديد</h3>
+  <input type="text" id="qText" placeholder="نص السؤال"><br><br>
+  <input type="text" id="qOptions" placeholder="اختيارات (افصلها بفاصلة)"><br><br>
+  <input type="text" id="qAnswer" placeholder="الإجابة الصحيحة"><br><br>
+  <button onclick="addQuestion()">إضافة</button>
+
+  <script>
+    const API_URL = "YOUR_DEPLOYED_SCRIPT_URL"; // ضع رابط Google Apps Script هنا
+    let questions = [];
+
+    async function loadQuestions() {
+      const res = await fetch(API_URL);
+      questions = await res.json();
+      renderQuiz();
+    }
+
+    function renderQuiz() {
+      const quizForm = document.getElementById("quizForm");
+      quizForm.innerHTML = "";
+      questions.forEach((q, i) => {
+        let div = document.createElement("div");
+        div.className = "question";
+        div.innerHTML = <p>${i+1}. ${q.question}</p> +
+          q.options.map(opt => 
+            <label><input type="radio" name="q${i}" value="${opt}"> ${opt}</label><br>
+          ).join("");
+        quizForm.appendChild(div);
+      });
+    }
+
+    function checkAnswers() {
+      let score = 0;
+      questions.forEach((q, i) => {
+        const selected = document.querySelector(input[name="q${i}"]:checked);
+        if (selected && selected.value === q.answer) score++;
+      });
+      document.getElementById("result").innerText = درجتك: ${score} من ${questions.length};
+    }
+
+    async function addQuestion() {
+      event.preventDefault();
+      const qText = document.getElementById("qText").value;
+      const qOptions = document.getElementById("qOptions").value.split(",");
+      const qAnswer = document.getElementById("qAnswer").value;
+
+      await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ question: qText, options: qOptions, answer: qAnswer })
+      });
+
+      alert("تم إضافة السؤال!");
+      loadQuestions(); // إعادة تحميل الأسئلة
+    }
+
+    loadQuestions();
+  </script>
+</body>
+</html>
