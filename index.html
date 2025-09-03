@@ -4,8 +4,33 @@
   <meta charset="UTF-8">
   <title>كويز Google Sheets</title>
   <style>
-    body { font-family: Arial; direction: rtl; text-align: right; margin: 20px; }
-    .question { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
+    body { 
+      font-family: Arial, sans-serif; 
+      direction: rtl; 
+      text-align: right; 
+      margin: 20px; 
+      background: #f9f9f9;
+    }
+    h2, h3 { color: #333; }
+    .question { 
+      margin-bottom: 20px; 
+      padding: 15px; 
+      border: 1px solid #ccc; 
+      border-radius: 8px; 
+      background: #fff;
+    }
+    button { 
+      margin-top: 10px; 
+      padding: 10px 15px; 
+      border: none; 
+      border-radius: 6px; 
+      background: #007bff; 
+      color: white; 
+      cursor: pointer;
+    }
+    button:hover { background: #0056b3; }
+    input[type="text"] { width: 80%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+    #result { margin-top: 20px; font-weight: bold; font-size: 18px; }
   </style>
 </head>
 <body>
@@ -17,57 +42,91 @@
 
   <hr>
   <h3>إضافة سؤال جديد</h3>
-  <input type="text" id="qText" placeholder="نص السؤال"><br><br>
-  <input type="text" id="qOptions" placeholder="اختيارات (افصلها بفاصلة)"><br><br>
-  <input type="text" id="qAnswer" placeholder="الإجابة الصحيحة"><br><br>
-  <button onclick="addQuestion()">إضافة</button>
+  <form onsubmit="addQuestion(event)">
+    <input type="text" id="qText" placeholder="نص السؤال" required><br><br>
+    <input type="text" id="qOptions" placeholder="اختيارات (افصلها بفاصلة)" required><br><br>
+    <input type="text" id="qAnswer" placeholder="الإجابة الصحيحة" required><br><br>
+    <button type="submit">إضافة</button>
+  </form>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwRR6ZTg7VdupmgPOxHIIy5Drqqv8pHQIUId9VLw2VUmWY8XZiaWKZTzH2wdXCLKEP_/exec"; // ضع رابط Google Apps Script هنا
+    const API_URL = "https://script.google.com/macros/s/AKfycbwRR6ZTg7VdupmgPOxHIIy5Drqqv8pHQIUId9VLw2VUmWY8XZiaWKZTzH2wdXCLKEP_/exec"; 
     let questions = [];
 
+    // تحميل الأسئلة من Google Sheets
     async function loadQuestions() {
-      const res = await fetch(API_URL);
-      questions = await res.json();
-      renderQuiz();
+      try {
+        const res = await fetch(API_URL);
+        questions = await res.json();
+        renderQuiz();
+      } catch (err) {
+        document.getElementById("quizForm").innerHTML = "<p style='color:red'>حدث خطأ أثناء تحميل الأسئلة.</p>";
+        console.error(err);
+      }
     }
 
+    // عرض الأسئلة
     function renderQuiz() {
       const quizForm = document.getElementById("quizForm");
       quizForm.innerHTML = "";
+      if (!questions.length) {
+        quizForm.innerHTML = "<p>لا توجد أسئلة حالياً.</p>";
+        return;
+      }
+
       questions.forEach((q, i) => {
         let div = document.createElement("div");
         div.className = "question";
-        div.innerHTML = <p>${i+1}. ${q.question}</p> +
-          q.options.map(opt => 
-            <label><input type="radio" name="q${i}" value="${opt}"> ${opt}</label><br>
-          ).join("");
+        div.innerHTML = `
+          <p>${i + 1}. ${q.question}</p>
+          ${q.options.map(opt => `
+            <label>
+              <input type="radio" name="q${i}" value="${opt}"> ${opt}
+            </label><br>
+          `).join("")}
+        `;
         quizForm.appendChild(div);
       });
     }
 
+    // التحقق من الإجابات
     function checkAnswers() {
       let score = 0;
       questions.forEach((q, i) => {
-        const selected = document.querySelector(input[name="q${i}"]:checked);
-        if (selected && selected.value === q.answer) score++;
+        const selected = document.querySelector(`input[name="q${i}"]:checked`);
+        if (selected && selected.value.trim() === q.answer.trim()) {
+          score++;
+        }
       });
-      document.getElementById("result").innerText = درجتك: ${score} من ${questions.length};
+      document.getElementById("result").innerText = `درجتك: ${score} من ${questions.length}`;
     }
 
-    async function addQuestion() {
+    // إضافة سؤال جديد
+    async function addQuestion(event) {
       event.preventDefault();
-      const qText = document.getElementById("qText").value;
-      const qOptions = document.getElementById("qOptions").value.split(",");
-      const qAnswer = document.getElementById("qAnswer").value;
+      const qText = document.getElementById("qText").value.trim();
+      const qOptions = document.getElementById("qOptions").value.split(",").map(opt => opt.trim()).filter(Boolean);
+      const qAnswer = document.getElementById("qAnswer").value.trim();
 
-      await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({ question: qText, options: qOptions, answer: qAnswer })
-      });
+      if (!qOptions.includes(qAnswer)) {
+        alert("الإجابة الصحيحة يجب أن تكون من ضمن الاختيارات!");
+        return;
+      }
 
-      alert("تم إضافة السؤال!");
-      loadQuestions(); // إعادة تحميل الأسئلة
+      try {
+        await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: qText, options: qOptions, answer: qAnswer })
+        });
+
+        alert("تمت إضافة السؤال بنجاح!");
+        document.querySelector("form").reset();
+        loadQuestions();
+      } catch (err) {
+        alert("فشل في إضافة السؤال.");
+        console.error(err);
+      }
     }
 
     loadQuestions();
