@@ -40,6 +40,82 @@
     /* small adjustments */
     .input-group .option-letter-badge { min-width: 36px; text-align:center; background:#efefef; border-radius:4px; padding:6px; }
     .list-group-item input[type="radio"] { transform: scale(1.05); }
+
+    /* Responsiveness for mobiles */
+@media (max-width: 768px) {
+  .contains {
+    padding: 15px;
+    margin: 10px;
+  }
+
+  .card-quiz {
+    font-size: 0.95rem;
+  }
+
+  .card-quiz h3,
+  .card-quiz h4 {
+    font-size: 1.2rem;
+  }
+
+  /* الفلترة وأزرار التحديث */
+  .d-flex.gap-2.align-items-center {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  #filterGroup {
+    width: 100% !important;
+  }
+
+  #refreshBtn {
+    width: 100%;
+  }
+
+  /* أزرار التحكم */
+  .d-flex.gap-2.mt-3 {
+    flex-direction: column;
+  }
+  .d-flex.gap-2.mt-3 button {
+    width: 100%;
+  }
+
+  /* نموذج الإضافة */
+  #addForm .d-flex.gap-2 {
+    flex-direction: column;
+  }
+  #addForm button,
+  #addForm select,
+  #addForm input {
+    width: 100%;
+  }
+  .form-check.form-switch {
+    align-self: flex-start;
+  }
+
+  /* النتائج */
+  .result-card h5 {
+    font-size: 1rem;
+  }
+  .result-card .option-text {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 0.9rem;
+  }
+  .contains {
+    padding: 10px;
+  }
+  .card-quiz {
+    font-size: 0.9rem;
+  }
+  .option-letter {
+    width: 20px;
+  }
+}
+
   </style>
 </head>
 <body>
